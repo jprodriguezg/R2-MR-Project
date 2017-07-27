@@ -1,0 +1,131 @@
+#ifndef CONTROLLER_H_
+#define CONTROLLER_H_
+
+// KUKA header includes
+#include <FastResearchInterface.h>
+
+// System header includes
+#include <OSAbstraction.h>
+#include <TypeIRML.h>
+#include <conio.h>
+
+// Project header includes
+#include "utils.h"
+
+class Controller{
+
+
+public:
+	/**
+	Constructor
+	*/
+	Controller();
+
+	/**
+	Destructor
+	*/
+	~Controller();
+
+	/**
+	Thread callback executing data acquisition and filtering. Fills the global floating array wrenchBuffer with the acquired measurements.
+	*/
+	void threadCallback();
+
+	/**
+	Utility function to store all buffered data of interest in the thread life span
+	@param int [out]: success flag
+	*/
+	int logData();
+
+	/**
+	Initialize the communication with the robot and instantiate an object kukaLWR to compute robot kinematics and dynamics
+	*/
+	void initFRIandRobot();
+
+	/**
+	Move the robot to an initial position using Reflexes Motion Libraries
+	@param Eigen::VectorXf [in]: Desired Cartesian Position
+	@param Eigen::VectorXf [out]: Final Joint configuration
+	*/
+	Eigen::VectorXf RMLMotionFromDesiredCartPose(Eigen::VectorXf);
+
+	/*
+	Returns inputs from keyboard.
+	@param int [out]: integer code of the pressed key
+	*/
+	void catchKeyboardInput();
+
+
+	/**
+	Run the main loop of the thread callback
+	*/
+	void mainLoop();
+
+private:
+
+	FastResearchInterface *FRI;										// Pointer to access to FRI structures and methods
+	kukaLWR* robot;													// Pointer to a kukaLWR object, containing structures and methods for robot kinematics and dynamics
+
+	TypeIRML* RML;
+	TypeIRMLInputParameters* IP;
+	TypeIRMLOutputParameters* OP;
+
+	int FRIResultValue;												// FRI Output result value 
+	bool run;														// Boolean variable stating the state of the main loop (running or not)
+	bool firstTime;													// Boolean variable stating if it is the first main loop (running)
+
+	float *cmdFloatJointPosition;									// Floating array of commanded joint positions
+	float *msrFloatJointPosition;									// Floating array of measured joint positions
+	float *msrFloatJointTorques;									// Floating array of measured joint torques
+	float *msrFloatExternalTorques;									// Floating array of measured joint torques
+
+	Eigen::VectorXf cmdEigJointPosition;							// Eigen array of commanded joint positions
+	Eigen::VectorXf msrEigJointPosition;							// Eigen array of measured joint positions
+	Eigen::VectorXf msrEigJointPositionPrev;						// Eigen array of previous measured joint positions
+	Eigen::VectorXf startJointPosition;								// Eigen array of the first joint positions
+
+	Eigen::VectorXf cmdEigJointVelocity;							// Eigen array of commanded joint velocities
+	Eigen::VectorXf msrEigJointVelocity;							// Eigen array of measured joint velocities
+	Eigen::VectorXf msrEigJointVelocityPrev;						// Eigen array of previous measured joint velocities
+
+	Eigen::VectorXf msrEigJointAcceleration;						// Eigen array of measured joint accelerations
+	Eigen::VectorXf msrEigJointTorques;								// Eigen array of measured joint torques
+	Eigen::VectorXf externalEigTorques;								// Eigen array of external torques
+
+	Eigen::VectorXf refEigCartesianVelocity;						// Eigen array of current Cartesian reference velocity
+	Eigen::VectorXf refEigCartesianPosition;						// Eigen array of current Cartesian reference position
+	Eigen::VectorXf eigEEPosition;						     		// Eigen array of current EE Cartesian position
+	Eigen::MatrixXf eigEEOrientation;						     	// Eigen matrix of current EE Cartesian orientation
+
+	Eigen::VectorXf startEigJointPosition;							// Eigen array of initial robot joint configurations
+	Eigen::VectorXf ftEigMeasurements;			    				// Eigen array of force measurements
+
+	Eigen::MatrixXf Jee;											// Full Jacobian Matrix from the base frame to the end-effector
+	Eigen::MatrixXf pinvJee;									    // Damped pseudo-inverse of the jacobian matrix
+	Eigen::MatrixXf eye7;											// identity 7x7 matrix
+
+	Eigen::VectorXf residualVector;									// Eigen array of the residual vector
+	Eigen::VectorXf prevResidualVector;								// Eigen array of the residual vector of the previous iteration
+	Eigen::VectorXf appliedForce;									// Eigen array of the applied force
+
+	int zone;														// 1: ZONE I    2: ZONE II   3: ZONE III   0: ERROR
+
+	float debugVariable;											// debugVariable
+
+
+	// Stringstream objects for logging
+	std::stringstream cmdJointPosSS;
+	std::stringstream msrJointPosSS;
+	std::stringstream cmdJointVelSS;
+	std::stringstream msrJointVelSS;
+	std::stringstream msrJointAccSS;
+	std::stringstream refCartVelSS;
+	std::stringstream refCartPosSS;
+	std::stringstream msrJointTorquesSS;
+	std::stringstream externalTorquesSS;
+	std::stringstream residualVectorSS;
+	std::stringstream appliedForceSS;
+
+};
+
+#endif //CONTROLLER_H_
